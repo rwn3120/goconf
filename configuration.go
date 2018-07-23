@@ -1,4 +1,4 @@
-package main
+package goconf
 
 import ("log"
     "gopkg.in/yaml.v2"

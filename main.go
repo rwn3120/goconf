@@ -1,4 +1,4 @@
-package main
+package goconf
 
 func main() {
 }
