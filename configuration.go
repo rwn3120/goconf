@@ -3,6 +3,7 @@ package main
 import ("log"
     "gopkg.in/yaml.v2"
     "io/ioutil"
+    "fmt"
 )
 
 type Configuration interface {
@@ -83,11 +84,19 @@ func LoadAndCheck(file string, configuration Configuration) Configuration {
     return configuration
 }
 
-
 func Save(file string, configuration Configuration) error {
     content, err := yaml.Marshal(configuration)
     if err != nil {
         return err
     }
     return ioutil.WriteFile(file, content, 0644)
+}
+
+func Print(configuration Configuration) {
+    content, err := yaml.Marshal(configuration)
+    if err != nil {
+        fmt.Printf("Configuration is not valid: %s", err.Error())
+        return
+    }
+    fmt.Printf("%s\n", string(content[:]))
 }
