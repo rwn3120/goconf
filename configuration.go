@@ -1,7 +1,9 @@
-package goconf
+package conf
 
-import ("log"
+import (
+    "log"
     "gopkg.in/yaml.v2"
+    "github.com/pelletier/go-toml"
     "io/ioutil"
     "fmt"
 )
@@ -16,6 +18,11 @@ func IsValid(configuration Configuration) bool {
     }
     return configuration.Validate() == nil
 }
+
+var tomlMarshal = toml.Marshal
+var tomlUnMarshal = toml.Unmarshal
+var yamlMarshal = yaml.Marshal
+var yamlUnMarshal = yaml.Unmarshal
 
 func Validate(configurations ...Configuration) *[]string {
     var allErrors []string
@@ -62,21 +69,45 @@ func Handle(errors ...string) {
     }
 }
 
-func Load(file string, configuration Configuration) error {
+func save(file string, configuration Configuration, marshal func(interface{}) ([]byte, error)) error {
+    content, err := marshal(configuration)
+    if err != nil {
+        return err
+    }
+    return ioutil.WriteFile(file, content, 0644)
+}
+
+func load(file string, configuration Configuration, unmarshal func([]byte, interface{}) (error)) error {
     content, err := ioutil.ReadFile(file)
     if err != nil {
         return err
     }
 
-    return yaml.Unmarshal(content, configuration)
+    return unmarshal(content, configuration)
 }
 
-func LoadAndCheck(file string, configuration Configuration) Configuration {
+func LoadYaml(file string, configuration Configuration) error {
+    return load(file, configuration, yamlUnMarshal)
+}
+
+func SaveYaml(file string, configuration Configuration) error {
+    return save(file, configuration, yamlMarshal)
+}
+
+func LoadToml(file string, configuration Configuration) error {
+    return load(file, configuration, tomlUnMarshal)
+}
+
+func SaveToml(file string, configuration Configuration) error {
+    return save(file, configuration, tomlMarshal)
+}
+
+func loadAndCheck(file string, configuration Configuration, load func(string, Configuration) error) Configuration {
     if configuration == nil {
         panic("Configuration can't be nil")
     }
 
-    err := Load(file, configuration)
+    err := load(file, configuration)
     if err != nil {
         panic(err)
     }
@@ -84,19 +115,43 @@ func LoadAndCheck(file string, configuration Configuration) Configuration {
     return configuration
 }
 
-func Save(file string, configuration Configuration) error {
-    content, err := yaml.Marshal(configuration)
-    if err != nil {
-        return err
-    }
-    return ioutil.WriteFile(file, content, 0644)
+func LoadYamlAndCheck(file string, configuration Configuration) Configuration {
+    return loadAndCheck(file, configuration, LoadYaml)
 }
 
-func Print(configuration Configuration) {
-    content, err := yaml.Marshal(configuration)
+func LoadTomlAndCheck(file string, configuration Configuration) Configuration {
+    return loadAndCheck(file, configuration, LoadYaml)
+}
+
+func print(configuration Configuration, to func(Configuration) (string, error)) {
+    value, err := to(configuration)
     if err != nil {
-        fmt.Printf("Configuration is not valid: %s", err.Error())
-        return
+        fmt.Printf("error: %s", err.Error())
+    } else {
+        fmt.Printf("%s\n", value)
     }
-    fmt.Printf("%s\n", string(content[:]))
+}
+
+func PrintYaml(configuration Configuration) {
+    print(configuration, ToYaml)
+}
+
+func PrintToml(configuration Configuration) {
+    print(configuration, ToToml)
+}
+
+func toString(configuration Configuration, marshal func(interface{}) ([]byte, error)) (string, error) {
+    content, err := marshal(configuration)
+    if err != nil {
+        return "", err
+    }
+    return string(content), err
+}
+
+func ToYaml(configuration Configuration) (string, error) {
+    return toString(configuration, yamlMarshal)
+}
+
+func ToToml(configuration Configuration) (string, error) {
+    return toString(configuration, tomlMarshal)
 }
