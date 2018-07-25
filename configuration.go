@@ -6,6 +6,7 @@ import (
     "github.com/pelletier/go-toml"
     "io/ioutil"
     "fmt"
+    "os"
 )
 
 type Configuration interface {
@@ -126,9 +127,9 @@ func LoadTomlAndCheck(file string, configuration Configuration) Configuration {
 func print(configuration Configuration, to func(Configuration) (string, error)) {
     value, err := to(configuration)
     if err != nil {
-        fmt.Printf("error: %s", err.Error())
+        fmt.Fprintf(os.Stderr, "error: %s\n", err.Error())
     } else {
-        fmt.Printf("%s\n", value)
+        fmt.Fprintf(os.Stdout, "%s\n", value)
     }
 }
 
