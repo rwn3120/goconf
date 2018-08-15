@@ -7,17 +7,18 @@ import (
     "io/ioutil"
     "fmt"
     "os"
+    "github.com/pkg/errors"
 )
 
 type Configuration interface {
-    Validate() *[]string
+    Validate() []error
 }
 
 func IsValid(configuration Configuration) bool {
     if configuration == nil {
         return false
     }
-    return configuration.Validate() == nil
+    return configuration.Validate() == nil || len(configuration.Validate()) == 0
 }
 
 var tomlMarshal = toml.Marshal
@@ -25,21 +26,20 @@ var tomlUnMarshal = toml.Unmarshal
 var yamlMarshal = yaml.Marshal
 var yamlUnMarshal = yaml.Unmarshal
 
-func Validate(configurations ...Configuration) *[]string {
-    var allErrors []string
+func Validate(configurations ...Configuration) []error {
+    var allErrors []error
     for _, configuration := range configurations {
         if configuration == nil {
-            err := "Configuration can't be nil"
-            allErrors = append(allErrors, err)
+            allErrors = append(allErrors, errors.New("configuration can't be nil"))
         } else {
             errors := configuration.Validate()
             if errors != nil {
-                allErrors = append(allErrors, *errors...)
+                allErrors = append(allErrors, errors...)
             }
         }
     }
     if len(allErrors) > 0 {
-        return &allErrors
+        return allErrors
     }
     return nil
 }
@@ -49,22 +49,22 @@ func Check(configurations ...Configuration) {
         panic("Nothing to check")
     }
 
-    var allErrors []string
+    var allErrors []error
     for _, configuration := range configurations {
         errors := Validate(configuration)
         if errors != nil {
-            allErrors = append(allErrors, *errors...)
+            allErrors = append(allErrors, errors...)
         }
 
     }
     Handle(allErrors...)
 }
 
-func Handle(errors ...string) {
+func Handle(errors ...error) {
     if len(errors) > 0 {
         var message = "Configuration Errors:"
         for i := 0; i < len(errors); i++ {
-            message = message + "\n\t" + errors[i]
+            message = message + "\n\t" + errors[i].Error()
         }
         log.Panic(message)
     }
